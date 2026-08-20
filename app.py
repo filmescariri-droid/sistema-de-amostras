@@ -75,39 +75,48 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-PATH_PRODUTOS = "amostras gratis.csv"
-PATH_CLIENTES = "clientes.csv"
+from pathlib import Path
 
-# -------------------------------------------------------------
-# LEITURA DOS ARQUIVOS
-# -------------------------------------------------------------
+# Obtém o caminho absoluto do diretório onde o app.py está executando
+BASE_DIR = Path(__file__).parent
+PATH_PRODUTOS = BASE_DIR / "amostras gratis.csv"
+PATH_CLIENTES = BASE_DIR / "clientes.csv"
+
 @st.cache_data
 def carregar_clientes():
-    if os.path.exists(PATH_CLIENTES):
+    if PATH_CLIENTES.exists():
         clientes = []
-        with open(PATH_CLIENTES, 'r', encoding='latin1') as f:
-            for line in f:
-                partes = [p.strip() for p in line.split(';') if p.strip()]
-                if partes and partes[0].isdigit():
-                    codigo = partes[0]
-                    nome = partes[1] if len(partes) > 1 else ""
-                    if nome and "Vendedor:" not in line:
-                        clientes.append({"Codigo": codigo, "Nome": nome})
-        return pd.DataFrame(clientes)
+        try:
+            with open(PATH_CLIENTES, 'r', encoding='latin1', errors='ignore') as f:
+                for line in f:
+                    partes = [p.strip() for p in line.split(';') if p.strip()]
+                    if partes and partes[0].isdigit():
+                        codigo = partes[0]
+                        nome = partes[1] if len(partes) > 1 else ""
+                        if nome and "Vendedor:" not in line:
+                            clientes.append({"Codigo": codigo, "Nome": nome})
+            return pd.DataFrame(clientes)
+        except Exception as e:
+            st.error(f"Erro ao ler clientes.csv: {e}")
+            return pd.DataFrame()
     return pd.DataFrame()
 
 @st.cache_data
 def carregar_produtos():
-    if os.path.exists(PATH_PRODUTOS):
+    if PATH_PRODUTOS.exists():
         produtos = []
-        with open(PATH_PRODUTOS, 'r', encoding='latin1') as f:
-            for line in f:
-                partes = [p.strip() for p in line.split(';') if p.strip()]
-                if partes and partes[0].isdigit():
-                    codigo = partes[0]
-                    descricao = partes[1] if len(partes) > 1 else ""
-                    produtos.append({"Codigo": codigo, "Descricao": f"{codigo} - {descricao}"})
-        return pd.DataFrame(produtos)
+        try:
+            with open(PATH_PRODUTOS, 'r', encoding='latin1', errors='ignore') as f:
+                for line in f:
+                    partes = [p.strip() for p in line.split(';') if p.strip()]
+                    if partes and partes[0].isdigit():
+                        codigo = partes[0]
+                        descricao = partes[1] if len(partes) > 1 else ""
+                        produtos.append({"Codigo": codigo, "Descricao": f"{codigo} - {descricao}"})
+            return pd.DataFrame(produtos)
+        except Exception as e:
+            st.error(f"Erro ao ler amostras gratis.csv: {e}")
+            return pd.DataFrame()
     return pd.DataFrame()
 
 # -------------------------------------------------------------
