@@ -98,7 +98,7 @@ def carregar_clientes():
                             clientes.append({
                                 "Codigo": codigo, 
                                 "Nome": nome,
-                                "Label": f"{codigo} - {nome}" # Formato para busca integrada
+                                "Label": f"{codigo} - {nome}"
                             })
             return pd.DataFrame(clientes)
         except Exception as e:
@@ -125,7 +125,7 @@ def carregar_produtos():
     return pd.DataFrame()
 
 # -------------------------------------------------------------
-# GERADOR DE PDF PROFISSIONAL (REPORTLAB)
+# GERADOR DE PDF PROFISSIONAL (REPORTLAB COM OBSERVAÇÃO)
 # -------------------------------------------------------------
 def gerar_pdf(codigo_cliente, nome_cliente, itens):
     buffer = BytesIO()
@@ -165,6 +165,15 @@ def gerar_pdf(codigo_cliente, nome_cliente, itens):
         fontName="Helvetica-Bold"
     )
 
+    obs_style = ParagraphStyle(
+        'ObsStyle',
+        parent=styles['Normal'],
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor("#1E3A8A"),
+        fontName="Helvetica-Oblique"
+    )
+
     story.append(Paragraph("<b>SOLICITAÇÃO DE AMOSTRAS GRÁTIS</b>", title_style))
     story.append(Spacer(1, 10))
 
@@ -189,9 +198,14 @@ def gerar_pdf(codigo_cliente, nome_cliente, itens):
     ]
     
     for idx, item in enumerate(itens, start=1):
+        # Monta o texto do produto com a observação logo abaixo (se existir)
+        texto_produto = f"<b>{item['Descricao']}</b>"
+        if item.get("Observacao"):
+            texto_produto += f"<br/><font color='#1E3A8A'><i>Obs: {item['Observacao']}</i></font>"
+
         tabela_dados.append([
             Paragraph(str(idx), label_style),
-            Paragraph(item["Descricao"], label_style),
+            Paragraph(texto_produto, label_style),
             Paragraph(str(item["Quantidade"]), label_style)
         ])
 
@@ -251,7 +265,6 @@ if not df_clientes.empty:
             codigo_final = match["Codigo"].values[0]
             nome_final = match["Nome"].values[0]
             
-    # Exibe os dados confirmados/editáveis
     c1, c2 = st.columns([1, 2])
     with c1:
         codigo_cliente = st.text_input("Código:", value=codigo_final)
@@ -264,7 +277,7 @@ else:
 st.divider()
 
 # -------------------------------------------------------------
-# ETAPA 2: ADICIONAR PRODUTOS
+# ETAPA 2: ADICIONAR PRODUTOS E OBSERVAÇÃO
 # -------------------------------------------------------------
 st.subheader("🛒 2. Selecionar Amostras")
 
@@ -274,12 +287,14 @@ else:
     prod_selecionado = st.text_input("Descrição da Amostra:")
 
 qtd_selecionada = st.number_input("Quantidade (Pacotes/Sacos):", min_value=1, value=1, step=1)
+obs_item = st.text_input("Observação do Item (Opcional):", placeholder="Ex: Entregar em embalagem reforçada...")
 
 if st.button("➕ Adicionar ao Pedido", type="primary"):
     if prod_selecionado:
         st.session_state.carrinho.append({
             "Descricao": prod_selecionado,
-            "Quantidade": int(qtd_selecionada)
+            "Quantidade": int(qtd_selecionada),
+            "Observacao": obs_item.strip()
         })
         st.toast("Item adicionado!", icon="✅")
         st.rerun()
@@ -299,6 +314,8 @@ if st.session_state.carrinho:
         with col_info:
             st.markdown(f"**{item['Descricao']}**")
             st.caption(f"Quantidade: **{item['Quantidade']}**")
+            if item.get("Observacao"):
+                st.caption(f"📝 *Obs: {item['Observacao']}*")
         with col_del:
             if st.button("❌", key=f"del_{idx}"):
                 st.session_state.carrinho.pop(idx)
