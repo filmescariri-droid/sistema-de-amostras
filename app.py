@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from pathlib import Path
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -8,25 +9,24 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 # -------------------------------------------------------------
-# CONFIGURAÇÃO DA PÁGINA (OTIMIZADA PARA CELULAR)
+# CONFIGURAÇÃO DA PÁGINA (RESPONSIVA E PWA PARA CELULARES)
 # -------------------------------------------------------------
 st.set_page_config(
     page_title="Mix Distribuidora - Amostras",
     page_icon="📦",
     layout="centered",
-    initial_sidebar_state="collapsed")
+    initial_sidebar_state="collapsed"
+)
 
-# Adiciona meta tags para funcionamento como App nativo em celulares
+# Meta tags para comportamento de App Nativo e CSS Responsivo
 st.markdown("""
+<head>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-""", unsafe_allow_html=True)
-
-# Estilização CSS Responsiva para Telas Menores
-st.markdown("""
+</head>
 <style>
-    /* Ajustes Gerais para Celulares */
+    /* Ajustes de tela para dispositivos móveis */
     .main .block-container {
         padding-top: 1rem;
         padding-bottom: 2rem;
@@ -35,7 +35,7 @@ st.markdown("""
         max-width: 100% !important;
     }
     
-    /* Cabeçalho Compacto */
+    /* Cabeçalho compacto */
     .header-mobile {
         background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
         padding: 16px;
@@ -57,7 +57,7 @@ st.markdown("""
         margin-bottom: 0;
     }
 
-    /* Botões Otimizados para o Polegar */
+    /* Botões otimizados para touch */
     div.stButton > button {
         width: 100% !important;
         height: 48px !important;
@@ -66,7 +66,7 @@ st.markdown("""
         border-radius: 8px !important;
     }
     
-    /* Rótulos dos Campos */
+    /* Estilização dos rótulos dos campos */
     .stSelectbox label, .stTextInput label, .stNumberInput label {
         font-size: 14px !important;
         font-weight: 600 !important;
@@ -75,13 +75,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-from pathlib import Path
-
-# Obtém o caminho absoluto do diretório onde o app.py está executando
+# Caminhos absolutos garantidos para o Streamlit Cloud (Linux)
 BASE_DIR = Path(__file__).parent
 PATH_PRODUTOS = BASE_DIR / "amostras gratis.csv"
 PATH_CLIENTES = BASE_DIR / "clientes.csv"
 
+# -------------------------------------------------------------
+# LEITURA DE ARQUIVOS (ROBUSTA CONTRA ERROS DE ENCODING/LINUX)
+# -------------------------------------------------------------
 @st.cache_data
 def carregar_clientes():
     if PATH_CLIENTES.exists():
@@ -97,7 +98,7 @@ def carregar_clientes():
                             clientes.append({"Codigo": codigo, "Nome": nome})
             return pd.DataFrame(clientes)
         except Exception as e:
-            st.error(f"Erro ao ler clientes.csv: {e}")
+            st.error(f"Erro ao ler arquivo de clientes: {e}")
             return pd.DataFrame()
     return pd.DataFrame()
 
@@ -115,12 +116,12 @@ def carregar_produtos():
                         produtos.append({"Codigo": codigo, "Descricao": f"{codigo} - {descricao}"})
             return pd.DataFrame(produtos)
         except Exception as e:
-            st.error(f"Erro ao ler amostras gratis.csv: {e}")
+            st.error(f"Erro ao ler arquivo de produtos: {e}")
             return pd.DataFrame()
     return pd.DataFrame()
 
 # -------------------------------------------------------------
-# GERADOR DE PDF (REPORTLAB)
+# GERADOR DE PDF PROFISSIONAL (REPORTLAB)
 # -------------------------------------------------------------
 def gerar_pdf(codigo_cliente, nome_cliente, itens):
     buffer = BytesIO()
@@ -208,7 +209,7 @@ def gerar_pdf(codigo_cliente, nome_cliente, itens):
     return buffer.getvalue()
 
 # -------------------------------------------------------------
-# ESTADO E DADOS
+# INICIALIZAÇÃO DE ESTADO
 # -------------------------------------------------------------
 if 'carrinho' not in st.session_state:
     st.session_state.carrinho = []
@@ -216,7 +217,7 @@ if 'carrinho' not in st.session_state:
 df_clientes = carregar_clientes()
 df_produtos = carregar_produtos()
 
-# Topo do App
+# Topo do aplicativo
 st.markdown("""
 <div class="header-mobile">
     <h2>📦 Pedido de Amostras</h2>
