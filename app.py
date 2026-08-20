@@ -75,13 +75,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Caminhos absolutos garantidos para o Streamlit Cloud (Linux)
+# Caminhos absolutos para execução em ambiente Server/Cloud
 BASE_DIR = Path(__file__).parent
 PATH_PRODUTOS = BASE_DIR / "amostras gratis.csv"
 PATH_CLIENTES = BASE_DIR / "clientes.csv"
 
 # -------------------------------------------------------------
-# LEITURA DE ARQUIVOS (ROBUSTA CONTRA ERROS DE ENCODING/LINUX)
+# LEITURA DE ARQUIVOS
 # -------------------------------------------------------------
 @st.cache_data
 def carregar_clientes():
@@ -95,7 +95,11 @@ def carregar_clientes():
                         codigo = partes[0]
                         nome = partes[1] if len(partes) > 1 else ""
                         if nome and "Vendedor:" not in line:
-                            clientes.append({"Codigo": codigo, "Nome": nome})
+                            clientes.append({
+                                "Codigo": codigo, 
+                                "Nome": nome,
+                                "Label": f"{codigo} - {nome}" # Formato para busca integrada
+                            })
             return pd.DataFrame(clientes)
         except Exception as e:
             st.error(f"Erro ao ler arquivo de clientes: {e}")
@@ -209,7 +213,7 @@ def gerar_pdf(codigo_cliente, nome_cliente, itens):
     return buffer.getvalue()
 
 # -------------------------------------------------------------
-# INICIALIZAÇÃO DE ESTADO
+# INICIALIZAÇÃO DE ESTADO E DADOS
 # -------------------------------------------------------------
 if 'carrinho' not in st.session_state:
     st.session_state.carrinho = []
@@ -226,23 +230,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------
-# ETAPA 1: DADOS DO CLIENTE
+# ETAPA 1: DADOS DO CLIENTE (BUSCA POR NOME OU CÓDIGO)
 # -------------------------------------------------------------
 st.subheader("👤 1. Dados do Cliente")
 
 if not df_clientes.empty:
-    lista_codigos = [""] + df_clientes["Codigo"].tolist()
-    codigo_sel = st.selectbox("Código do Cliente:", options=lista_codigos)
+    opcoes_clientes = [""] + df_clientes["Label"].tolist()
+    cliente_sel = st.selectbox(
+        "Pesquisar Cliente (Digite o Código ou Nome):", 
+        options=opcoes_clientes,
+        placeholder="Digite para buscar..."
+    )
     
-    nome_padrao = ""
-    if codigo_sel:
-        match = df_clientes[df_clientes["Codigo"] == codigo_sel]
+    codigo_final = ""
+    nome_final = ""
+    
+    if cliente_sel:
+        match = df_clientes[df_clientes["Label"] == cliente_sel]
         if not match.empty:
-            nome_padrao = match["Nome"].values[0]
+            codigo_final = match["Codigo"].values[0]
+            nome_final = match["Nome"].values[0]
             
-    nome_cliente = st.text_input("Nome / Razão Social:", value=nome_padrao)
+    # Exibe os dados confirmados/editáveis
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        codigo_cliente = st.text_input("Código:", value=codigo_final)
+    with c2:
+        nome_cliente = st.text_input("Razão Social:", value=nome_final)
 else:
-    codigo_sel = st.text_input("Código do Cliente:")
+    codigo_cliente = st.text_input("Código do Cliente:")
     nome_cliente = st.text_input("Nome / Razão Social:")
 
 st.divider()
@@ -303,18 +319,18 @@ st.divider()
 st.subheader("📄 4. Finalizar e Baixar PDF")
 
 if st.button("🚀 Gerar PDF do Pedido", type="primary"):
-    if not codigo_sel or not nome_cliente:
+    if not codigo_cliente or not nome_cliente:
         st.error("Selecione o cliente antes de gerar.")
     elif not st.session_state.carrinho:
         st.error("Adicione ao menos uma amostra.")
     else:
         try:
-            pdf_bytes = gerar_pdf(codigo_sel, nome_cliente, st.session_state.carrinho)
+            pdf_bytes = gerar_pdf(codigo_cliente, nome_cliente, st.session_state.carrinho)
             st.success("PDF criado com sucesso!")
             st.download_button(
                 label="📥 Baixar Pedido em PDF",
                 data=pdf_bytes,
-                file_name=f"pedido_{codigo_sel}.pdf",
+                file_name=f"pedido_{codigo_cliente}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
